@@ -1,9 +1,11 @@
 import { useQuizContext } from "@/contexts/quiz-context";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 export function useQuiz() {
   const { state, dispatch } = useQuizContext();
+  const [, setLocation] = useLocation();
 
   const startQuizMutation = useMutation({
     mutationFn: async () => {

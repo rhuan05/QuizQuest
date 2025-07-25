@@ -5,17 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LoadingOverlay from "@/components/layout/loading-overlay";
 import { Rocket, Clock, BarChart3, Zap, TrendingUp, Smartphone } from "lucide-react";
+import { useEffect } from "react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { startQuiz, isLoading } = useQuiz();
+  const { startQuiz, isLoading, sessionToken, questions } = useQuiz();
   const [isStarting, setIsStarting] = useState(false);
+
+  useEffect(() => {
+    if (sessionToken && questions.length > 0) {
+      setLocation(`/quiz`);
+    };
+  });
 
   const handleStartQuiz = async () => {
     setIsStarting(true);
     try {
-      const sessionToken = await startQuiz();
-      setLocation(`/quiz`);
+      await startQuiz();
     } catch (error) {
       console.error("Failed to start quiz:", error);
     } finally {
