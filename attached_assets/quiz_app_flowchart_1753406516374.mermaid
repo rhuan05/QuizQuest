@@ -1,0 +1,114 @@
+flowchart TD
+    A[🏠 Landing Page] --> B{Usuário quer começar?}
+    
+    B -->|Sim| C[⚡ Loading Quiz]
+    B -->|Não| D[📚 Explorar Conteúdo]
+    
+    C --> E[🎯 Tela de Início do Quiz]
+    E --> F[📋 Exibir primeira pergunta]
+    
+    F --> G[👤 Usuário lê pergunta + código]
+    G --> H[🤔 Usuário seleciona resposta]
+    
+    H --> I{Resposta selecionada?}
+    I -->|Não| J[⏰ Timer continua]
+    J --> K{Tempo esgotado?}
+    K -->|Não| G
+    K -->|Sim| L[❌ Marcar como incorreta]
+    
+    I -->|Sim| M[✅ Validar resposta]
+    
+    M --> N{Resposta correta?}
+    N -->|Sim| O[🎉 Feedback positivo]
+    N -->|Não| P[❌ Feedback negativo]
+    
+    O --> Q[📊 Mostrar explicação]
+    P --> Q
+    
+    Q --> R[⏱️ Aguardar 2-3 segundos]
+    R --> S{Última pergunta?}
+    
+    S -->|Não| T[➡️ Próxima pergunta]
+    T --> U[📈 Atualizar progresso]
+    U --> F
+    
+    S -->|Sim| V[🏆 Calcular pontuação final]
+    V --> W[📊 Tela de Resultados]
+    
+    W --> X[🎯 Mostrar score percentual]
+    X --> Y[📋 Classificação performance]
+    Y --> Z[📝 Resumo acertos/erros]
+    Z --> AA[💡 Sugestões de estudo]
+    
+    AA --> BB{Usuário quer ação?}
+    
+    BB -->|Tentar novamente| CC[🔄 Reiniciar Quiz]
+    BB -->|Compartilhar| DD[📱 Modal de compartilhamento]
+    BB -->|Ver detalhes| EE[🔍 Análise detalhada]
+    BB -->|Sair| FF[👋 Voltar ao início]
+    
+    CC --> C
+    
+    DD --> GG[📋 Copiar link]
+    DD --> HH[🐦 Compartilhar Twitter]
+    DD --> II[💼 Compartilhar LinkedIn]
+    GG --> JJ[✅ Toast: Link copiado]
+    HH --> KK[🔗 Abrir nova aba]
+    II --> KK
+    JJ --> AA
+    KK --> AA
+    
+    EE --> LL[📊 Gráfico de performance]
+    LL --> MM[⏱️ Tempo por pergunta]
+    MM --> NN[📈 Áreas de melhoria]
+    NN --> OO[🔙 Voltar aos resultados]
+    OO --> AA
+    
+    FF --> A
+    
+    %% Estados de erro e loading
+    C --> PP{Loading com erro?}
+    PP -->|Sim| QQ[⚠️ Tela de erro]
+    PP -->|Não| E
+    
+    QQ --> RR[🔄 Botão tentar novamente]
+    RR --> C
+    
+    %% Funcionalidades auxiliares
+    F --> SS[❓ Botão de ajuda]
+    SS --> TT[💡 Modal com dicas]
+    TT --> UU[❌ Fechar modal]
+    UU --> F
+    
+    F --> VV[⏸️ Pausar quiz]
+    VV --> WW[⏳ Modal de pausa]
+    WW --> XX{Usuário escolhe?}
+    XX -->|Continuar| F
+    XX -->|Sair| A
+    
+    %% Responsive e acessibilidade
+    G --> YY[📱 Adaptação mobile]
+    YY --> ZZ[♿ Suporte teclado]
+    ZZ --> AAA[🔊 Screen reader]
+    AAA --> H
+    
+    %% Analytics tracking
+    A --> BBB[📊 Track: page_view]
+    E --> CCC[📊 Track: quiz_started]
+    M --> DDD[📊 Track: question_answered]
+    W --> EEE[📊 Track: quiz_completed]
+    
+    %% Estilos para diferentes tipos de nós
+    classDef startEnd fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef process fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef feedback fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef analytics fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    
+    class A,FF startEnd
+    class C,E,F,Q,R,T,U,V,W,X,Y,Z,AA,CC,LL,MM,NN process
+    class B,I,K,N,S,BB,PP,XX decision
+    class O,P,JJ,TT feedback
+    class QQ,L error
+    class BBB,CCC,DDD,EEE analytics

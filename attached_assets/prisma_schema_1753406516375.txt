@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para categorias de perguntas
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  slug        String     @unique
+  icon        String?
+  color       String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  questions   Question[]
+  
+  @@map("categories")
+}
+
+// Modelo para níveis de dificuldade
+model Difficulty {
+  id          String     @id @default(cuid())
+  name        String     @unique // easy, medium, hard
+  label       String     // Fácil, Médio, Difícil
+  points      Int        @default(1) // Pontos por resposta correta
+  color       String?
+  order       Int        @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  questions   Question[]
+  
+  @@map("difficulties")
+}
+
+// Modelo principal para perguntas
+model Question {
+  id            String      @id @default(cuid())
+  title         String
+  question      String      @db.Text
+  code          String?     @db.Text // Código opcional para a pergunta
+  explanation   String      @db.Text // Explicação da resposta correta
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relacionamentos
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  difficultyId  String
+  difficulty    Difficulty  @relation(fields: [difficultyId], references: [id])
+  
+  // Opções de resposta
+  options       Option[]
+  
+  // Estatísticas da pergunta
+  statistics    QuestionStats?
+  
+  // Respostas dos usuários
+  answers       Answer[]
+  
+  @@map("questions")
+}
+
+// Modelo para opções de resposta
+model Option {
+  id          String   @id @default(cuid())
+  text        String
+  isCorrect   Boolean  @default(false)
+  order       Int      // Ordem de exibição (A, B, C, D)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamento
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  // Respostas dos usuários
+  answers     Answer[]
+  
+  @@unique([questionId, order])
+  @@map("options")
+}
+
+// Modelo para usuários (opcional para MVP, mas importante para futuro)
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  username      String?   @unique
+  displayName   String?
+  avatar        String?
+  isAnonymous   Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastActiveAt  DateTime  @default(now())
+  
+  // Estatísticas do usuário
+  totalSessions Int       @default(0)
+  totalScore    Int       @default(0)
+  bestScore     Float     @default(0)
+  streak        Int       @default(0)
+  
+  // Relacionamentos
+  sessions      QuizSession[]
+  answers       Answer[]
+  achievements  UserAchievement[]
+  
+  @@map("users")
+}
+
+// Modelo para sessões de quiz
+model QuizSession {
+  id            String      @id @default(cuid())
+  sessionToken  String      @unique @default(cuid()) // Para usuários anônimos
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+  isCompleted   Boolean     @default(false)
+  totalQuestions Int        @default(10)
+  correctAnswers Int        @default(0)
+  score         Float       @default(0) // Percentual 0-100
+  timeSpent     Int?        // Tempo em segundos
+  
+  // Relacionamentos
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  answers       Answer[]
+  
+  // Metadados
+  userAgent     String?
+  ipAddress     String?
+  deviceType    String?     // mobile, tablet, desktop
+  
+  @@map("quiz_sessions")
+}
+
+// Modelo para respostas individuais
+model Answer {
+  id            String      @id @default(cuid())
+  isCorrect     Boolean
+  timeSpent     Int?        // Tempo em segundos para responder
+  answeredAt    DateTime    @default(now())
+  
+  // Relacionamentos
+  sessionId     String
+  session       QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  questionId    String
+  question      Question    @relation(fields: [questionId], references: [id])
+  
+  optionId      String
+  option        Option      @relation(fields: [optionId], references: [id])
+  
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  
+  @@unique([sessionId, questionId])
+  @@map("answers")
+}
+
+// Modelo para estatísticas das perguntas
+model QuestionStats {
+  id              String   @id @default(cuid())
+  totalAnswers    Int      @default(0)
+  correctAnswers  Int      @default(0)
+  successRate     Float    @default(0) // Percentual de acerto
+  averageTime     Float?   // Tempo médio de resposta em segundos
+  lastUpdated     DateTime @default(now())
+  
+  // Relacionamento
+  questionId      String   @unique
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@map("question_stats")
+}
+
+// Modelo para conquistas/badges (futuro)
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String
+  condition   String   // JSON com condições para unlock
+  points      Int      @default(0)
+  rarity      String   @default("common") // common, rare, epic, legendary
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  users       UserAchievement[]
+  
+  @@map("achievements")
+}
+
+// Modelo para relacionar usuários e conquistas
+model UserAchievement {
+  id          String      @id @default(cuid())
+  unlockedAt  DateTime    @default(now())
+  
+  // Relacionamentos
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  achievementId String
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// Modelo para feedback dos usuários (futuro)
+model Feedback {
+  id          String      @id @default(cuid())
+  type        String      // bug, suggestion, question, other
+  subject     String
+  message     String      @db.Text
+  rating      Int?        // 1-5 stars
+  status      String      @default("pending") // pending, reviewed, resolved
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relacionamentos
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  
+  // Metadados
+  userAgent   String?
+  url         String?
+  sessionId   String?
+  
+  @@map("feedback")
+}
+
+// Modelo para analytics e métricas (futuro)
+model Analytics {
+  id          String   @id @default(cuid())
+  event       String   // quiz_started, quiz_completed, question_answered, etc.
+  properties  Json?    // Propriedades específicas do evento
+  timestamp   DateTime @default(now())
+  
+  // Relacionamentos
+  userId      String?
+  sessionId   String?
+  
+  // Metadados
+  userAgent   String?
+  ipAddress   String?
+  deviceType  String?
+  
+  @@map("analytics")
+}
