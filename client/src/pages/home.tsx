@@ -1,33 +1,11 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { useQuiz } from "@/hooks/use-quiz";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LoadingOverlay from "@/components/layout/loading-overlay";
 import { Rocket, Clock, BarChart3, Zap, TrendingUp, Smartphone } from "lucide-react";
-import { useEffect } from "react";
+import { useStartQuiz } from "@/hooks/useStartQuiz";
 
 export default function Home() {
-  const [, setLocation] = useLocation();
-  const { startQuiz, isLoading, sessionToken, questions } = useQuiz();
-  const [isStarting, setIsStarting] = useState(false);
-
-  useEffect(() => {
-    if (sessionToken && questions.length > 0) {
-      setLocation(`/quiz`);
-    };
-  });
-
-  const handleStartQuiz = async () => {
-    setIsStarting(true);
-    try {
-      await startQuiz();
-    } catch (error) {
-      console.error("Failed to start quiz:", error);
-    } finally {
-      setIsStarting(false);
-    }
-  };
+  const { handleStartQuiz, isStarting, isLoading } = useStartQuiz();
 
   return (
     <>

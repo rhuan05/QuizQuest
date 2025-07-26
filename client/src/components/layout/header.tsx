@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { Code, Home, BarChart3 } from "lucide-react";
+import { useStartQuiz } from "@/hooks/useStartQuiz";
 
 export default function Header() {
   const [location, setLocation] = useLocation();
+  const { handleStartQuiz } = useStartQuiz();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
@@ -39,8 +41,8 @@ export default function Header() {
               Estatísticas
             </Button>
             {location !== "/quiz" && (
-              <Button 
-                onClick={() => setLocation("/")}
+              <Button
+                onClick={handleStartQuiz}
                 className="bg-primary text-white hover:bg-blue-600 transition-colors duration-200"
               >
                 <Code className="mr-2 h-4 w-4" />
