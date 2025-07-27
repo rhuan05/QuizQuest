@@ -109,31 +109,33 @@ export default function QuestionCard({
         </div>
         
         {/* Action Buttons */}
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            onClick={showHint}
-            className="flex items-center space-x-2 text-gray-600 hover:text-primary"
+        <div className="flex flex-col gap-4 items-center sm:flex-row sm:justify-between mt-6">
+          {/* Responder em cima no mobile */}
+          <Button
+            onClick={onSubmit}
+            disabled={!selectedOption || isSubmitting}
+            className="w-full sm:w-auto px-8 py-3 bg-primary text-white hover:bg-blue-600 order-1 sm:order-none"
           >
-            <Lightbulb className="h-4 w-4" />
-            <span>Dica</span>
+            {isSubmitting ? "Enviando..." : "Responder"}
           </Button>
           
-          <div className="flex space-x-3">
-            <Button 
-              variant="outline" 
+          {/* Pular e Dica juntos abaixo no mobile */}
+          <div className="flex flex-col gap-3 w-full sm:flex-row sm:w-auto order-2 sm:order-none">
+            <Button
+              variant="outline"
               onClick={onSkip}
-              className="px-6 py-3"
+              className="w-full sm:w-auto px-6 py-3"
             >
               <SkipForward className="mr-2 h-4 w-4" />
               Pular
             </Button>
-            <Button 
-              onClick={onSubmit}
-              disabled={!selectedOption || isSubmitting}
-              className="px-8 py-3 bg-primary text-white hover:bg-blue-600"
+            <Button
+              variant="ghost"
+              onClick={showHint}
+              className="w-full sm:w-auto flex items-center space-x-2 text-gray-600 hover:text-primary"
             >
-              {isSubmitting ? "Enviando..." : "Responder"}
+              <Lightbulb className="h-4 w-4" />
+              <span>Dica</span>
             </Button>
           </div>
         </div>
