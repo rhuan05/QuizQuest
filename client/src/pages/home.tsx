@@ -3,9 +3,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import LoadingOverlay from "@/components/layout/loading-overlay";
 import { Rocket, Clock, BarChart3, Zap, TrendingUp, Smartphone } from "lucide-react";
 import { useStartQuiz } from "@/hooks/useStartQuiz";
+import { useQuiz } from "@/hooks/use-quiz";
 
 export default function Home() {
-  const { handleStartQuiz, isStarting, isLoading } = useStartQuiz();
+  const { isStarting, isLoading } = useStartQuiz();
+  
+  const { startQuiz } = useQuiz();
+
+  const handleStartQuiz = async () => {
+    await startQuiz();
+  };
 
   return (
     <>

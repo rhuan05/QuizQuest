@@ -1,11 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { Code, Home, BarChart3 } from "lucide-react";
-import { useStartQuiz } from "@/hooks/useStartQuiz";
+import { useQuiz } from "@/hooks/use-quiz";
 
 export default function Header() {
   const [location, setLocation] = useLocation();
-  const { handleStartQuiz } = useStartQuiz();
+  
+  const { startQuiz } = useQuiz();
+
+  const handleStartQuiz = async () => {
+    await startQuiz();
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
