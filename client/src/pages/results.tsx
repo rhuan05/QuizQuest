@@ -7,6 +7,7 @@ import ShareModal from "@/components/quiz/share-modal";
 import LoadingOverlay from "@/components/layout/loading-overlay";
 import { useState } from "react";
 import { Trophy, RotateCcw, Share, BarChart3, Medal, Clock } from "lucide-react";
+import { useQuiz } from "@/hooks/use-quiz";
 
 export default function Results() {
   const params = useParams();
@@ -20,7 +21,10 @@ export default function Results() {
     enabled: !!sessionToken,
   });
 
+  const { resetQuiz } = useQuiz();
+
   const handleRestartQuiz = () => {
+    resetQuiz();
     setLocation("/");
   };
 
