@@ -9,7 +9,7 @@ import FeedbackModal from "@/components/quiz/feedback-modal";
 import LoadingOverlay from "@/components/layout/loading-overlay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Pause, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 
 export default function Quiz() {
   const [, setLocation] = useLocation();
@@ -99,9 +99,6 @@ export default function Quiz() {
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row sm:justify-between items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
-                  <Button variant="ghost" size="sm">
-                    <Pause className="h-5 w-5" />
-                  </Button>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Quiz JavaScript</h2>
                     <p className="text-sm text-gray-500">
