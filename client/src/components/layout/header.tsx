@@ -12,6 +12,11 @@ export default function Header() {
     await startQuiz();
   };
 
+  const handleStatistics = () => {
+    // TODO: Implement statistics page
+    alert("Estatísticas será implementada na próxima versão.");
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,6 +44,7 @@ export default function Header() {
               Início
             </Button>
             <Button 
+              onClick={handleStatistics}
               variant="ghost"
               className="text-gray-600 hover:text-primary transition-colors duration-200"
             >
