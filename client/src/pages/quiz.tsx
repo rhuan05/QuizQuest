@@ -137,7 +137,6 @@ export default function Quiz() {
               onSubmit={handleSubmitAnswer}
               onSkip={handleSkipQuestion}
               isSubmitting={isSubmitting}
-              showHint={() => {}}
             />
           )}
         </div>

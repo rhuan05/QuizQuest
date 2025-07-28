@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lightbulb, SkipForward } from "lucide-react";
+import { SkipForward } from "lucide-react";
 import type { QuestionWithOptions } from "@shared/schema";
 
 interface QuestionCardProps {
@@ -11,7 +11,6 @@ interface QuestionCardProps {
   onSubmit: () => void;
   onSkip: () => void;
   isSubmitting: boolean;
-  showHint: () => void;
 }
 
 export default function QuestionCard({
@@ -20,8 +19,7 @@ export default function QuestionCard({
   onSelectOption,
   onSubmit,
   onSkip,
-  isSubmitting,
-  showHint
+  isSubmitting
 }: QuestionCardProps) {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -128,14 +126,6 @@ export default function QuestionCard({
             >
               <SkipForward className="mr-2 h-4 w-4" />
               Pular
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={showHint}
-              className="w-full sm:w-auto flex items-center space-x-2 text-gray-600 hover:text-primary"
-            >
-              <Lightbulb className="h-4 w-4" />
-              <span>Dica</span>
             </Button>
           </div>
         </div>
