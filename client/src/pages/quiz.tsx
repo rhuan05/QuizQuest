@@ -97,7 +97,7 @@ export default function Quiz() {
           {/* Quiz Header with Progress */}
           <Card className="mb-8">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
                   <Button variant="ghost" size="sm">
                     <Pause className="h-5 w-5" />
