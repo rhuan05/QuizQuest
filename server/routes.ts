@@ -189,22 +189,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const difficultyStats = new Map();
       
       for (const answer of session.answers) {
-        const category = answer.question.category?.name || 'Unknown';
-        const difficulty = answer.question.difficulty?.name || 'Unknown';
+        const category = await storage.getCategoryById(answer.question.categoryId) || null;
+        const difficulty = await storage.getDifficultyById(answer.question.difficultyId) || null;
+
+        const categoryKey = category?.name ?? "unknown-category";
+        const difficultyKey = difficulty?.name ?? "unknown-difficulty";
         
         // Category stats
-        if (!categoryStats.has(category)) {
-          categoryStats.set(category, { total: 0, correct: 0 });
+        if (!categoryStats.has(categoryKey)) {
+          categoryStats.set(categoryKey, { total: 0, correct: 0, name: category?.name ?? "Desconhecido" });
         }
-        const catStat = categoryStats.get(category);
+        const catStat = categoryStats.get(categoryKey);
         catStat.total += 1;
         if (answer.isCorrect) catStat.correct += 1;
         
         // Difficulty stats
-        if (!difficultyStats.has(difficulty)) {
-          difficultyStats.set(difficulty, { total: 0, correct: 0 });
+        if (!difficultyStats.has(difficultyKey)) {
+          difficultyStats.set(difficultyKey, { total: 0, correct: 0, name: difficulty?.name ?? "Desconhecido" });
         }
-        const diffStat = difficultyStats.get(difficulty);
+        const diffStat = difficultyStats.get(difficultyKey);
         diffStat.total += 1;
         if (answer.isCorrect) diffStat.correct += 1;
       }

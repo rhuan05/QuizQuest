@@ -135,25 +135,30 @@ export default function Results() {
                   <BarChart3 className="text-primary mr-3" />
                   Análise por Categoria
                 </h3>
-                
-                <div className="space-y-4">
-                  {Object.entries(categoryBreakdown).map(([category, stats]) => (
+                {Object.entries(categoryBreakdown).map(([category, stats]) => {
+                  const { correct, total, percentage } = stats as {
+                    correct: number;
+                    total: number;
+                    percentage: number;
+                  };
+
+                  return (
                     <div key={category} className="flex items-center justify-between">
                       <span className="text-gray-700">{category}</span>
                       <div className="flex items-center space-x-3">
                         <div className="bg-gray-200 rounded-full h-2 w-24">
                           <div 
                             className="bg-green-600 h-2 rounded-full transition-all duration-500" 
-                            style={{ width: `${stats.percentage}%` }}
+                            style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
                         <span className="text-sm font-semibold text-gray-900 w-12 text-right">
-                          {stats.correct}/{stats.total}
+                          {correct}/{total}
                         </span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </CardContent>
             </Card>
             
@@ -167,26 +172,41 @@ export default function Results() {
                 
                 <div className="space-y-4">
                   {Object.entries(categoryBreakdown)
-                    .sort(([,a], [,b]) => a.percentage - b.percentage)
+                    .sort(([, a], [, b]) => {
+                      const statA = a as { percentage: number };
+                      const statB = b as { percentage: number };
+                      return statA.percentage - statB.percentage;
+                    })
                     .slice(0, 3)
                     .map(([category, stats]) => {
-                      const level = stats.percentage >= 80 ? 'success' : stats.percentage >= 60 ? 'warning' : 'error';
-                      const color = level === 'success' ? 'bg-green-600' : level === 'warning' ? 'bg-orange-600' : 'bg-red-600';
+                      const { percentage } = stats as {
+                        correct: number;
+                        total: number;
+                        percentage: number;
+                      };
+
+                    const level =
+                      percentage >= 80 ? "success" :
+                      percentage >= 60 ? "warning" : "error";
+
+                    const color =
+                      level === "success" ? "bg-green-600" :
+                      level === "warning" ? "bg-orange-600" : "bg-red-600";
                       
-                      return (
-                        <div key={category} className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 ${color} rounded-full mt-2 flex-shrink-0`}></div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{category}</h4>
-                            <p className="text-sm text-gray-600">
-                              {level === 'success' && "Você demonstra bom entendimento desta área!"}
-                              {level === 'warning' && "Revise alguns conceitos para melhorar sua compreensão"}
-                              {level === 'error' && "Foque seus estudos nesta área para melhor desempenho"}
-                            </p>
-                          </div>
+                    return (
+                      <div key={category} className="flex items-start space-x-3">
+                        <div className={`w-2 h-2 ${color} rounded-full mt-2 flex-shrink-0`}></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{category}</h4>
+                          <p className="text-sm text-gray-600">
+                            {level === 'success' && "Você demonstra bom entendimento desta área!"}
+                            {level === 'warning' && "Revise alguns conceitos para melhorar sua compreensão"}
+                            {level === 'error' && "Foque seus estudos nesta área para melhor desempenho"}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

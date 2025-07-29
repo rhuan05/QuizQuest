@@ -6,15 +6,18 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { UUID } from "crypto";
 
 export interface IStorage {
   // Categories
   getCategories(): Promise<Category[]>;
   getCategoryBySlug(slug: string): Promise<Category | undefined>;
+  getCategoryById(categoryId: string): Promise<Category | undefined>;
   
   // Difficulties
   getDifficulties(): Promise<Difficulty[]>;
   getDifficultyByName(name: string): Promise<Difficulty | undefined>;
+  getDifficultyById(difficultyId: string): Promise<Difficulty | undefined>;
   
   // Questions
   getQuestions(categoryId?: string, difficultyId?: string): Promise<QuestionWithOptions[]>;
@@ -52,6 +55,11 @@ export class DatabaseStorage implements IStorage {
     return category || undefined;
   }
 
+  async getCategoryById(categoryId: string): Promise<Category> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, categoryId));
+    return category;
+  }
+
   async getDifficulties(): Promise<Difficulty[]> {
     return await db.select().from(difficulties).orderBy(difficulties.order);
   }
@@ -59,6 +67,11 @@ export class DatabaseStorage implements IStorage {
   async getDifficultyByName(name: string): Promise<Difficulty | undefined> {
     const [difficulty] = await db.select().from(difficulties).where(eq(difficulties.name, name));
     return difficulty || undefined;
+  }
+
+  async getDifficultyById(difficultyId: string): Promise<Difficulty> {
+    const [difficulty] = await db.select().from(difficulties).where(eq(difficulties.id, difficultyId));
+    return difficulty;
   }
 
   async getQuestions(categoryId?: string, difficultyId?: string): Promise<QuestionWithOptions[]> {
