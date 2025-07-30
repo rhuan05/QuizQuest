@@ -1,7 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-const BASE_URL_API = import.meta.env.VITE_BASE_URL_API;
-
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -14,7 +12,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(`${BASE_URL_API}${url}`, {
+  const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
