@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import Quiz from "@/pages/quiz";
 import Results from "@/pages/results";
 import Header from "@/components/layout/header";
+import Dashboard from "./components/dashboard/dashboard";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/quiz" component={Quiz} />
       <Route path="/results/:sessionToken" component={Results} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
     </Switch>
   );
