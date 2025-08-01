@@ -257,9 +257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/quiz/dashboard", async (req, res) => {
     try {
       const completedQuizzes = await storage.getCompletedQuizSession();
-      if (!completedQuizzes || completedQuizzes.length === 0) {
-        return res.status(404).json({ message: "No completed quizzes found" });
-      }
 
       res.json(completedQuizzes);
     } catch (error) {
