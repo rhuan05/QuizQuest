@@ -1,19 +1,21 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { randomUUID } from "crypto";
+import { randomUUID, UUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../auth/service/auth.service";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import { adminMiddleware } from "../middlewares/admin.middleware";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get quiz questions
-  app.get("/api/questions", async (req, res) => {
+  app.get("/api/questions", authMiddleware, async (req, res) => {
     try {
-      const { categoryId, difficultyId, count = "10" } = req.query;
+      const { categoryId, count = "10" } = req.query;
       
       const questions = await storage.getRandomQuestions(
         parseInt(count as string),
-        categoryId as string
+        categoryId as UUID
       );
       
       // Remove correct answers from response for security
@@ -54,28 +56,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Start a new quiz session
-  app.post("/api/quiz/start", async (req, res) => {
+  // Start a new quiz session with authentication
+  app.post("/api/quiz/start", authMiddleware, async (req, res) => {
+    console.log("🚀 [DEBUG] Starting quiz request...");
+    console.log("Request body:", req.body);
+
     try {
+      const { category } = req.body;
+
+      console.log("🎫 [DEBUG] Generating session token...");
       const sessionToken = randomUUID();
-      
-      // Create anonymous user
-      const user = await storage.createAnonymousUser();
-      
+
       // Create quiz session
+      console.log("📝 [DEBUG] Creating quiz session...");
       const session = await storage.createQuizSession({
         sessionToken,
-        userId: user.id,
         totalQuestions: 10,
         userAgent: req.headers['user-agent'] || '',
         ipAddress: req.ip || '',
         deviceType: req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop'
       });
 
-      res.json({ sessionToken, sessionId: session.id });
+      // 🚀 BUSCAR AS PERGUNTAS DO QUIZ
+      const categoryDB = await storage.getCategoryByName(category as string);
+
+      const difficultyDB = await storage.getDifficultyByName("Iniciante");
+
+      const questions = await storage.getRandomQuestions(10, categoryDB?.id as UUID);
+
+      if (questions.length === 0) {
+        console.log("❌ [DEBUG] No questions found for category:", category);
+        return res.status(404).json({ message: "Nenhuma pergunta encontrada para esta categoria" });
+      }
+
+      // Remove correct answers from response for security
+      console.log("🔒 [DEBUG] Sanitizing questions...");
+      const sanitizedQuestions = questions.map(question => ({
+        ...question,
+        options: question.options.map(option => ({
+          ...option,
+          isCorrect: undefined // Hide correct answer
+        }))
+      }));
+
+      res.json({ 
+        sessionToken, 
+        sessionId: session.id,
+        questions: sanitizedQuestions
+      });
     } catch (error) {
-      console.error("Error starting quiz:", error);
-      res.status(500).json({ message: "Failed to start quiz" });
+      console.error("❌ [ERROR] Failed to start quiz:");
+      console.error("Error type:", typeof error);
+      console.error("Error message:", error instanceof Error ? error.message : error);
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      console.error("Full error object:", error);
+
+      res.status(500).json({ 
+        message: "Failed to start quiz",
+        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+      });
     }
   });
 
@@ -130,7 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           correctAnswers: updatedCorrectAnswers,
           score: updatedScore
         });
-      }
+      };
+
+      await storage.updatedQuestionsAnswered(session.userId as string);
 
       res.json({
         isCorrect,
@@ -269,13 +310,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/login", async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await storage.getUserByUsername(email);
+    const user = await storage.getUserByEmail(email);
     if (!user) return res.status(404).json({ message: "Usuário não Encontrado." });
 
     const valid = await bcrypt.compare(password, user.passwordHash || "");
     if (!valid) return res.status(401).json({ message: "Senha Inválida."})
 
-    const token = generateToken({ id: user.id, username: user.email })
+    const token = generateToken({ id: user.id, email: user.email, role: user.role })
 
     return res.json({ token });
   });
@@ -284,6 +325,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { email, username, password } = req.body;
+
+      console.log("[DEBUG] Dados: " + email, username, password);
       
       if (!email || !username || !password) {
         return res.status(400).json({ message: "Todos os campos são obrigatórios." });
@@ -298,6 +341,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingUsername) {
         return res.status(409).json({ message: "Username já está em uso." });
       }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Formato de email inválido" });
+      }
 
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(password, salt);
@@ -307,8 +355,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         username,
         isAnonymous: false,
+        role: "user",
         totalScore: 0,
         totalSessions: 0,
+      });
+
+      // Criar plano gratuito para o novo usuário
+      await storage.createUserPlan({
+        userId: newUser.id,
+        planType: "free",
+        questionsPerDay: 10,
+        currentDayQuestions: 0
       });
 
       return res.status(201).json({
@@ -321,6 +378,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ message: "Erro ao criar usuário.", error: error });
     }
+  });
+
+  // ADMIN ROUTES - Protegidas com adminMiddleware
+  
+  // Listar todas as questões (admin)
+  app.get("/api/admin/questions", adminMiddleware, async (req, res) => {
+    try {
+      const allQuestions = await storage.getAllQuestionsAdmin();
+      res.json(allQuestions);
+    } catch (error) {
+      console.error("Error fetching admin questions:", error);
+      res.status(500).json({ message: "Failed to fetch questions" });
+    }
+  });
+
+  // Criar nova questão
+  app.post("/api/admin/questions", adminMiddleware, async (req, res) => {
+    try {
+      const questionData = req.body;
+      
+      // Validações
+      if (!questionData.categoryId || !questionData.difficultyId || !questionData.question) {
+        return res.status(400).json({ message: "Campos obrigatórios: categoryId, difficultyId, question" });
+      }
+
+      if (!questionData.options || questionData.options.length !== 4) {
+        return res.status(400).json({ message: "Deve haver exatamente 4 opções" });
+      }
+
+      const correctOptions = questionData.options.filter((opt: any) => opt.isCorrect);
+      if (correctOptions.length !== 1) {
+        return res.status(400).json({ message: "Deve haver exatamente uma opção correta" });
+      }
+
+      const question = await storage.createQuestionWithOptions(questionData);
+      res.status(201).json({ message: "Pergunta criada com sucesso", questionId: question.id });
+    } catch (error) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ message: "Failed to create question" });
+    }
+  });
+
+  // Atualizar questão
+  app.put("/api/admin/questions/:id", adminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const updatedQuestion = await storage.updateQuestion(id, updates);
+      
+      // Se há opções para atualizar
+      if (updates.options) {
+        await storage.updateQuestionOptions(id, updates.options);
+      }
+
+      res.json({ message: "Pergunta atualizada com sucesso", question: updatedQuestion });
+    } catch (error) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+
+  // Deletar questão
+  app.delete("/api/admin/questions/:id", adminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteQuestion(id);
+      res.json({ message: "Pergunta deletada com sucesso" });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
+    }
+  });
+
+  // LIMITE DIÁRIO ROUTES
+
+  // Verificar limite diário do usuário
+  app.get("/api/quiz/daily-limit", authMiddleware, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const limit = await storage.checkDailyLimit(user.id);
+      res.json(limit);
+    } catch (error) {
+      console.error("Error checking daily limit:", error);
+      res.status(500).json({ message: "Failed to check daily limit" });
+    }
+  });
+
+  // Iniciar quiz com verificação de limite
+  app.post("/api/quiz/start-with-limit", authMiddleware, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { canAnswer, remaining } = await storage.checkDailyLimit(user.id);
+      
+      if (!canAnswer) {
+        return res.status(429).json({ 
+          message: "Limite diário atingido", 
+          remaining: 0,
+          needsPremium: true 
+        });
+      }
+
+      const { categoryId } = req.body;
+      const questions = await storage.getRandomQuestions(1, categoryId);
+      
+      if (questions.length === 0) {
+        return res.status(404).json({ message: "Nenhuma pergunta encontrada" });
+      }
+
+      // Sanitizar pergunta (remover resposta correta)
+      const sanitizedQuestion = {
+        ...questions[0],
+        options: questions[0].options.map(option => ({
+          ...option,
+          isCorrect: undefined
+        }))
+      };
+
+      // Atualizar uso diário
+      const today = new Date().toISOString().split('T')[0];
+      const dailyUsage = await storage.getDailyUsage(user.id, today);
+      
+      if (dailyUsage) {
+        await storage.updateDailyUsage(user.id, today, dailyUsage.questionsAnswered + 1);
+      } else {
+        await storage.createDailyUsage({
+          userId: user.id,
+          date: today,
+          questionsAnswered: 1
+        });
+      }
+
+      res.json({ 
+        question: sanitizedQuestion,
+        remaining: remaining - 1
+      });
+    } catch (error) {
+      console.error("Error starting quiz with limit:", error);
+      res.status(500).json({ message: "Failed to start quiz" });
+    }
+  });
+
+  app.post("/api/daily-limit", authMiddleware,(req, res) => {
+
   });
 
   const httpServer = createServer(app);

@@ -7,5 +7,5 @@ export function generateToken(payload: object): string {
 };
 
 export function verifyToken(token: string) {
-    jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, JWT_SECRET);
 };

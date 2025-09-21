@@ -1,7 +1,10 @@
+import { UUID } from "crypto";
 import { 
   categories, difficulties, questions, options, users, quizSessions, answers, questionStats,
+  userPlans, dailyQuestionUsage,
   type Category, type Difficulty, type User, type QuizSession, type Answer, type QuestionStats,
-  type InsertUser, type InsertQuizSession, type InsertAnswer,
+  type UserPlan, type DailyQuestionUsage, type InsertUser, type InsertQuizSession, type InsertAnswer,
+  type InsertUserPlan, type InsertDailyQuestionUsage, type Question, type Option, type InsertQuestion,
   type QuestionWithOptions, type QuizSessionWithAnswers
 } from "../shared/schema";
 import { db } from "./db";
@@ -23,11 +26,30 @@ export interface IStorage {
   getQuestionById(id: string): Promise<QuestionWithOptions | undefined>;
   getRandomQuestions(count: number, categoryId?: string): Promise<QuestionWithOptions[]>;
   
+  // Admin - Question Management
+  getAllQuestionsAdmin(): Promise<QuestionWithOptions[]>;
+  createQuestionWithOptions(questionData: any): Promise<Question>;
+  updateQuestion(id: string, updates: Partial<Question>): Promise<Question>;
+  deleteQuestion(id: string): Promise<void>;
+  updateQuestionOptions(questionId: string, optionsData: any[]): Promise<void>;
+  
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   createAnonymousUser(): Promise<User>;
+  updatedQuestionsAnswered(userId: string): Promise<void>;
+  
+  // User Plans
+  getUserPlan(userId: string): Promise<UserPlan | undefined>;
+  createUserPlan(userPlan: InsertUserPlan): Promise<UserPlan>;
+  updateUserPlan(userId: string, updates: Partial<UserPlan>): Promise<UserPlan>;
+  
+  // Daily Usage
+  getDailyUsage(userId: string, date: string): Promise<DailyQuestionUsage | undefined>;
+  createDailyUsage(usage: InsertDailyQuestionUsage): Promise<DailyQuestionUsage>;
+  updateDailyUsage(userId: string, date: string, questionsAnswered: number): Promise<DailyQuestionUsage>;
+  checkDailyLimit(userId: string): Promise<{ canAnswer: boolean; remaining: number }>;
   
   // Quiz Sessions
   createQuizSession(session: InsertQuizSession): Promise<QuizSession>;
@@ -111,7 +133,13 @@ export class DatabaseStorage implements IStorage {
     return question || undefined;
   }
 
-  async getRandomQuestions(count: number, categoryId?: string): Promise<QuestionWithOptions[]> {
+  async getCategoryByName(categoryName: string): Promise<Category | undefined>{
+    return await db.query.categories.findFirst({
+      where: eq(categories.name, categoryName)
+    });
+  }
+
+  async getRandomQuestions(count: number, categoryId: UUID): Promise<QuestionWithOptions[]> {
     const conditions = [eq(questions.isActive, true)];
     
     if (categoryId) {
@@ -161,6 +189,18 @@ export class DatabaseStorage implements IStorage {
     }).returning();
     return user;
   }
+
+  async updatedQuestionsAnswered(userId: string) {
+    if(userId){
+      await db.update(users)
+                .set({
+                  totalSessions: sql`${users.totalSessions} + 1`,
+                  updatedAt : new Date()
+                })
+                .where(eq(users.id, userId))
+                .returning();
+    }
+  };
 
   async createQuizSession(session: InsertQuizSession): Promise<QuizSession> {
     const [newSession] = await db.insert(quizSessions).values(session).returning();
@@ -264,6 +304,157 @@ export class DatabaseStorage implements IStorage {
   async getQuestionStats(questionId: string): Promise<QuestionStats | undefined> {
     const [stats] = await db.select().from(questionStats).where(eq(questionStats.questionId, questionId));
     return stats || undefined;
+  }
+
+  // Admin Question Management
+  async getAllQuestionsAdmin(): Promise<QuestionWithOptions[]> {
+    return await db.query.questions.findMany({
+      with: {
+        options: {
+          orderBy: [options.order]
+        },
+        category: true,
+        difficulty: true
+      },
+      orderBy: [questions.createdAt]
+    });
+  }
+
+  async createQuestionWithOptions(questionData: any): Promise<Question> {
+    const { categoryId, difficultyId, title, question, code, explanation, options: optionsData } = questionData;
+    
+    // Criar a pergunta
+    const [newQuestion] = await db.insert(questions).values({
+      categoryId,
+      difficultyId,
+      title: title || question.substring(0, 50),
+      question,
+      code: code || null,
+      explanation: explanation || "",
+      isActive: true
+    }).returning();
+
+    // Criar as opções
+    for (const [index, optionData] of optionsData.entries()) {
+      await db.insert(options).values({
+        questionId: newQuestion.id,
+        text: optionData.text,
+        isCorrect: optionData.isCorrect,
+        order: index + 1
+      });
+    }
+
+    return newQuestion;
+  }
+
+  async updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
+    const [updatedQuestion] = await db
+      .update(questions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(questions.id, id))
+      .returning();
+    return updatedQuestion;
+  }
+
+  async updateQuestionOptions(questionId: string, optionsData: any[]): Promise<void> {
+    // Deletar opções existentes
+    await db.delete(options).where(eq(options.questionId, questionId));
+    
+    // Inserir novas opções
+    for (const [index, optionData] of optionsData.entries()) {
+      await db.insert(options).values({
+        questionId,
+        text: optionData.text,
+        isCorrect: optionData.isCorrect,
+        order: index + 1
+      });
+    }
+  }
+
+  async deleteQuestion(id: string): Promise<void> {
+    // Deletar opções relacionadas primeiro (cascade delete)
+    await db.delete(options).where(eq(options.questionId, id));
+    // Deletar estatísticas da pergunta
+    await db.delete(questionStats).where(eq(questionStats.questionId, id));
+    // Deletar a pergunta
+    await db.delete(questions).where(eq(questions.id, id));
+  }
+
+  // User Plans
+  async getUserPlan(userId: string): Promise<UserPlan | undefined> {
+    const [plan] = await db.select().from(userPlans).where(eq(userPlans.userId, userId));
+    return plan || undefined;
+  }
+
+  async createUserPlan(userPlan: InsertUserPlan): Promise<UserPlan> {
+    const [plan] = await db.insert(userPlans).values(userPlan).returning();
+    return plan;
+  }
+
+  async updateUserPlan(userId: string, updates: Partial<UserPlan>): Promise<UserPlan> {
+    const [plan] = await db
+      .update(userPlans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userPlans.userId, userId))
+      .returning();
+    return plan;
+  }
+
+  // Daily Usage
+  async getDailyUsage(userId: string, date: string): Promise<DailyQuestionUsage | undefined> {
+    const [usage] = await db
+      .select()
+      .from(dailyQuestionUsage)
+      .where(and(
+        eq(dailyQuestionUsage.userId, userId),
+        eq(dailyQuestionUsage.date, date)
+      ));
+    return usage || undefined;
+  }
+
+  async createDailyUsage(usage: InsertDailyQuestionUsage): Promise<DailyQuestionUsage> {
+    const [newUsage] = await db.insert(dailyQuestionUsage).values(usage).returning();
+    return newUsage;
+  }
+
+  async updateDailyUsage(userId: string, date: string, questionsAnswered: number): Promise<DailyQuestionUsage> {
+    const [usage] = await db
+      .update(dailyQuestionUsage)
+      .set({ 
+        questionsAnswered,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(dailyQuestionUsage.userId, userId),
+        eq(dailyQuestionUsage.date, date)
+      ))
+      .returning();
+    return usage;
+  }
+
+  async checkDailyLimit(userId: string): Promise<{ canAnswer: boolean; remaining: number }> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Buscar plano do usuário
+    let userPlan = await this.getUserPlan(userId);
+    if (!userPlan) {
+      // Criar plano gratuito padrão
+      userPlan = await this.createUserPlan({
+        userId,
+        planType: "free",
+        questionsPerDay: 10,
+        currentDayQuestions: 0
+      });
+    }
+
+    // Buscar uso diário
+    const dailyUsage = await this.getDailyUsage(userId, today);
+    const questionsAnswered = dailyUsage?.questionsAnswered || 0;
+    
+    const remaining = Math.max(0, userPlan.questionsPerDay - questionsAnswered);
+    const canAnswer = remaining > 0;
+
+    return { canAnswer, remaining };
   }
 }
 

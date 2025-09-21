@@ -7,6 +7,7 @@ import { z } from "zod";
 // Enums
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'medium', 'hard']);
 export const deviceTypeEnum = pgEnum('device_type', ['mobile', 'tablet', 'desktop']);
+export const planTypeEnum = pgEnum('plan_type', ['free', 'premium']);
 
 // Categories table
 export const categories = pgTable("categories", {
@@ -67,6 +68,7 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   avatar: text("avatar"),
   isAnonymous: boolean("is_anonymous").default(true).notNull(),
+  role: text("role").default("user").notNull(), // "admin" | "user"
   totalSessions: integer("total_sessions").default(0).notNull(),
   totalScore: integer("total_score").default(0).notNull(),
   bestScore: real("best_score").default(0).notNull(),
@@ -116,6 +118,28 @@ export const questionStats = pgTable("question_stats", {
   questionId: uuid("question_id").notNull().unique(),
 });
 
+// User plans table
+export const userPlans = pgTable("user_plans", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().unique(),
+  planType: planTypeEnum("plan_type").default("free").notNull(),
+  questionsPerDay: integer("questions_per_day").default(10).notNull(),
+  currentDayQuestions: integer("current_day_questions").default(0).notNull(),
+  lastQuestionDate: timestamp("last_question_date"),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
+// Daily question usage table
+export const dailyQuestionUsage = pgTable("daily_question_usage", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  questionsAnswered: integer("questions_answered").default(0).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
 // Relations
 export const categoryRelations = relations(categories, ({ many }) => ({
   questions: many(questions),
@@ -147,9 +171,11 @@ export const optionRelations = relations(options, ({ one, many }) => ({
   answers: many(answers),
 }));
 
-export const userRelations = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ one, many }) => ({
   sessions: many(quizSessions),
   answers: many(answers),
+  plan: one(userPlans),
+  dailyUsage: many(dailyQuestionUsage),
 }));
 
 export const quizSessionRelations = relations(quizSessions, ({ one, many }) => ({
@@ -183,6 +209,20 @@ export const questionStatsRelations = relations(questionStats, ({ one }) => ({
   question: one(questions, {
     fields: [questionStats.questionId],
     references: [questions.id],
+  }),
+}));
+
+export const userPlansRelations = relations(userPlans, ({ one }) => ({
+  user: one(users, {
+    fields: [userPlans.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dailyQuestionUsageRelations = relations(dailyQuestionUsage, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyQuestionUsage.userId],
+    references: [users.id],
   }),
 }));
 
@@ -227,6 +267,18 @@ export const insertAnswerSchema = createInsertSchema(answers).omit({
   answeredAt: true,
 });
 
+export const insertUserPlanSchema = createInsertSchema(userPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDailyQuestionUsageSchema = createInsertSchema(dailyQuestionUsage).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
@@ -250,6 +302,12 @@ export type Answer = typeof answers.$inferSelect;
 export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
 
 export type QuestionStats = typeof questionStats.$inferSelect;
+
+export type UserPlan = typeof userPlans.$inferSelect;
+export type InsertUserPlan = z.infer<typeof insertUserPlanSchema>;
+
+export type DailyQuestionUsage = typeof dailyQuestionUsage.$inferSelect;
+export type InsertDailyQuestionUsage = z.infer<typeof insertDailyQuestionUsageSchema>;
 
 // Extended types for API responses
 export type QuestionWithOptions = Question & {
