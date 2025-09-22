@@ -57,20 +57,30 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
     if (!validateForm()) return;
 
     if (isLogin) {
-      
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        await login(email, password);
+      try {
+        setIsLoading(true);
+        setMessage(null);
+        
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          await login(email, password);
+        }
+
+        setIsLoading(true);
+        await startQuiz();
+        await setTimeout(() => {
+          onClose();
+          setLocation('/quiz');
+        }, 10);
+      } catch (error: any) {
+        setMessage(error.message || "Erro desconhecido.");
+        console.log(error);
+
+        setIsSuccess(false);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(true);
-      await startQuiz();
-      await setTimeout(() => {
-        onClose();
-        setLocation('/quiz');
-      }, 10);
-
     } else {
       e.preventDefault();
       setIsLoading(true);
@@ -94,8 +104,9 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
               setIsLogin(!isLogin);
             }, 2000);
         }
-      } catch (err) {
-          setMessage("Erro de rede. Tente novamente mais tarde.");
+      } catch (error: any) {
+          setMessage(error.message || "Erro desconhecido.");
+          console.log(error);
           setIsSuccess(false);
       } finally {
           setIsLoading(false);
@@ -118,6 +129,7 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setFormErrors({});
+    setMessage(null);
   };
 
   return (
@@ -132,11 +144,12 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Mostrar erro global se houver */}
-          {error && (
-            <Alert variant="destructive">
+          {message && (
+            <Alert variant={isSuccess ? "default" : "destructive"}
+                  className={isSuccess ? 'border-green-500 bg-green-50 text-green-800' : ''}>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {error}
+                {message}
               </AlertDescription>
             </Alert>
           )}

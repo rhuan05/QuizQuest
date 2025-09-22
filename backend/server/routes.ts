@@ -334,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const existingEmail = await storage.getUserByEmail(email);
       if (existingEmail) {
-        return res.status(409).json({ message: "Email já está em uso." });
+        return res.status(409).json({ message: "Email já está em uso." }); //rhuan
       }
 
       const existingUsername = await storage.getUserByUsername(username);
