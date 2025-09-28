@@ -26,7 +26,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      setLocation('/dashboard'); // Redirect to dashboard after successful login
+      setLocation('/quiz');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login. Tente novamente.');
     }

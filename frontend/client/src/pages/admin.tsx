@@ -9,16 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
-import { Trash2, Edit, Plus, Eye } from 'lucide-react';
+import { Trash2, Edit, Plus, Eye, AlertCircle } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 interface Question {
   id: string;
   question: string;
   explanation: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  categoryId: string;
-  categoryName?: string;
+  difficulty: Difficulty;
+  category: Category;
   options: Option[];
   createdAt: string;
 }
@@ -35,11 +34,17 @@ interface Category {
   description: string;
 }
 
+interface Difficulty {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface QuestionForm {
   question: string;
   explanation: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  categoryId: string;
+  difficulty: string;
+  category: string;
   options: {
     text: string;
     isCorrect: boolean;
@@ -51,14 +56,16 @@ export default function AdminPage() {
   const [, setLocation] = useLocation();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [difficulties, setDifficulties] = useState<Difficulty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [formData, setFormData] = useState<QuestionForm>({
     question: '',
     explanation: '',
-    difficulty: 'easy',
-    categoryId: '',
+    difficulty: '',
+    category: '',
     options: [
       { text: '', isCorrect: false },
       { text: '', isCorrect: false },
@@ -67,46 +74,68 @@ export default function AdminPage() {
     ]
   });
 
-  // Redirect if not admin
   useEffect(() => {
-    if (!isAdmin && !isLoading) {
-      setLocation('/');
-      return;
-    }
-  }, [isAdmin, isLoading, setLocation]);
-
-  // Fetch questions and categories
-  useEffect(() => {
-    if (isAdmin && token) {
+    if (token) {
       fetchData();
+    } else {
+      setIsLoading(false);
     }
-  }, [isAdmin, token]);
+  }, [token]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      // Fetch questions and categories in parallel
-      const [questionsRes, categoriesRes] = await Promise.all([
+      const [questionsRes, categoriesRes, difficultiesRes] = await Promise.all([
         fetch('/api/admin/questions', {
           headers: { Authorization: `Bearer ${token}` }
         }),
         fetch('/api/categories', {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch('/api/difficulties', {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
-      if (questionsRes.ok) {
-        const questionsData = await questionsRes.json();
-        setQuestions(questionsData);
+      if (!questionsRes.ok) {
+        const errorData = await questionsRes.json().catch(() => ({ message: 'Erro desconhecido' }));
+        setError({
+          status: questionsRes.status,
+          message: errorData.message || 'Erro ao carregar dados do admin'
+        });
+        return;
       }
+
+      const questionsData = await questionsRes.json();
+      setQuestions(questionsData);
 
       if (categoriesRes.ok) {
         const categoriesData = await categoriesRes.json();
         setCategories(categoriesData);
       }
+
+      if (difficultiesRes.ok) {
+        const difficultiesData = await difficultiesRes.json();
+        setDifficulties(difficultiesData);
+      } else {
+        setDifficulties([
+          { id: '1', name: 'Iniciante', description: 'Nível básico' },
+          { id: '2', name: 'Intermediário', description: 'Nível médio' },
+          { id: '3', name: 'Avançado', description: 'Nível alto' }
+        ]);
+      }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      setError({
+        status: 500,
+        message: 'Erro de conexão com o servidor'
+      });
+      setDifficulties([
+        { id: '1', name: 'Iniciante', description: 'Nível básico' },
+        { id: '2', name: 'Intermediário', description: 'Nível médio' },
+        { id: '3', name: 'Avançado', description: 'Nível alto' }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +145,8 @@ export default function AdminPage() {
     setFormData({
       question: '',
       explanation: '',
-      difficulty: 'easy',
-      categoryId: '',
+      difficulty: '',
+      category: '',
       options: [
         { text: '', isCorrect: false },
         { text: '', isCorrect: false },
@@ -131,8 +160,7 @@ export default function AdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    if (!formData.question.trim() || !formData.categoryId || !formData.explanation.trim()) {
+    if (!formData.question.trim() || !formData.category || !formData.explanation.trim()) {
       alert('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -155,16 +183,24 @@ export default function AdminPage() {
         ? `/api/admin/questions/${editingQuestion.id}`
         : '/api/admin/questions';
 
+      const requestData = {
+        question: formData.question.trim(),
+        explanation: formData.explanation.trim(),
+        category: formData.category,
+        difficulty: formData.difficulty,
+        options: validOptions.map(opt => ({
+          text: opt.text.trim(),
+          isCorrect: opt.isCorrect
+        }))
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          options: validOptions
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {
@@ -172,27 +208,28 @@ export default function AdminPage() {
         setIsDialogOpen(false);
         resetForm();
       } else {
-        const error = await response.json();
-        alert(error.message || 'Erro ao salvar pergunta');
+        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        alert(`Erro ${response.status}: ${errorData.message || 'Erro ao salvar pergunta'}`);
       }
     } catch (error) {
-      console.error('Error saving question:', error);
-      alert('Erro ao salvar pergunta');
+      alert('Erro de conexão: Não foi possível salvar a pergunta');
     }
   };
 
   const handleEdit = (question: Question) => {
-    setEditingQuestion(question);
-    setFormData({
+    const newFormData = {
       question: question.question,
       explanation: question.explanation,
-      difficulty: question.difficulty,
-      categoryId: question.categoryId,
+      difficulty: question.difficulty?.name || '',
+      category: question.category?.name || '',
       options: question.options.map(opt => ({
         text: opt.text,
         isCorrect: opt.isCorrect
       }))
-    });
+    };
+    
+    setEditingQuestion(question);
+    setFormData(newFormData);
     setIsDialogOpen(true);
   };
 
@@ -206,19 +243,18 @@ export default function AdminPage() {
       if (response.ok) {
         await fetchData();
       } else {
-        const error = await response.json();
-        alert(error.message || 'Erro ao excluir pergunta');
+        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        alert(`Erro ${response.status}: ${errorData.message || 'Erro ao excluir pergunta'}`);
       }
     } catch (error) {
       console.error('Error deleting question:', error);
-      alert('Erro ao excluir pergunta');
+      alert('Erro de conexão: Não foi possível excluir a pergunta');
     }
   };
 
   const handleOptionChange = (index: number, field: 'text' | 'isCorrect', value: string | boolean) => {
     const newOptions = [...formData.options];
     if (field === 'isCorrect' && value === true) {
-      // Uncheck all other options when one is checked
       newOptions.forEach((opt, i) => {
         opt.isCorrect = i === index;
       });
@@ -228,17 +264,47 @@ export default function AdminPage() {
     setFormData({ ...formData, options: newOptions });
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'hard': return 'bg-red-100 text-red-800';
+  const getDifficultyColor = (difficulty: Difficulty | string) => {
+    const difficultyName = typeof difficulty === 'string' ? difficulty : difficulty?.name;
+    switch (difficultyName) {
+      case 'Iniciante': return 'bg-green-100 text-green-800';
+      case 'Intermediário': return 'bg-yellow-100 text-yellow-800';
+      case 'Avançado': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  if (!isAdmin) {
-    return null; // Will redirect in useEffect
+  // Mostrar erro no estilo not-found
+  if (error) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6">
+            <div className="flex mb-4 gap-2">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+              <h1 className="text-2xl font-bold text-gray-900">Falha ao acessar</h1>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-600">
+              {error.message}
+            </p>
+            
+            <Button 
+              onClick={() => setLocation('/')} 
+              className="mt-4 w-full"
+              variant="outline"
+            >
+              Voltar ao início
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!token && !isLoading) {
+    setLocation('/');
+    return null;
   }
 
   if (isLoading) {
@@ -293,15 +359,15 @@ export default function AdminPage() {
                       Categoria *
                     </label>
                     <Select
-                      value={formData.categoryId}
-                      onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
+                          <SelectItem key={category.id} value={category.name}>
                             {category.name}
                           </SelectItem>
                         ))}
@@ -313,19 +379,22 @@ export default function AdminPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Dificuldade *
                     </label>
+
                     <Select
                       value={formData.difficulty}
-                      onValueChange={(value: 'easy' | 'medium' | 'hard') => 
+                      onValueChange={(value) => 
                         setFormData({ ...formData, difficulty: value })
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecione a dificuldade" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="easy">Fácil</SelectItem>
-                        <SelectItem value="medium">Médio</SelectItem>
-                        <SelectItem value="hard">Difícil</SelectItem>
+                        {difficulties.map((difficulty) => (
+                          <SelectItem key={difficulty.id} value={difficulty.name}>
+                            {difficulty.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -412,11 +481,11 @@ export default function AdminPage() {
                           </CardTitle>
                           <div className="flex items-center gap-2 mb-2">
                             <Badge className={getDifficultyColor(question.difficulty)}>
-                              {question.difficulty === 'easy' ? 'Fácil' : 
-                               question.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+                              {question.difficulty?.name === 'Iniciante' ? 'Fácil' : 
+                               question.difficulty?.name === 'Intermediário' ? 'Médio' : 'Difícil'}
                             </Badge>
                             <Badge variant="outline">
-                              {question.categoryName || 'Sem categoria'}
+                              {question.category?.name || 'Sem categoria'}
                             </Badge>
                           </div>
                         </div>
@@ -501,7 +570,9 @@ export default function AdminPage() {
                     <CardContent>
                       <p className="text-sm text-gray-600">{category.description}</p>
                       <div className="mt-3 text-xs text-gray-400">
-                        {questions.filter(q => q.categoryId === category.id).length} perguntas
+                        {questions.filter(q => 
+                          q.category?.name === category.name
+                        ).length} perguntas
                       </div>
                     </CardContent>
                   </Card>

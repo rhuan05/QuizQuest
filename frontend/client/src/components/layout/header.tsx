@@ -13,45 +13,42 @@ export default function Header() {
   
   const { startQuiz, resetQuiz, isLoading } = useQuiz();
   const { isAuthenticated, user, logout } = useAuth();
+  const [, setIsLoading] = useState(false);
 
   const handleStartQuiz = async () => {
     setAuthError('');
-    setShowAuthModal(true);
+
+    const token = localStorage.getItem("authToken");
+
+    if (token) {
+      setIsLoading(true);
+        await startQuiz();
+        setTimeout(() => {
+          setLocation('/quiz');
+        }, 10)
+    } else {
+      setShowAuthModal(true);
+    }
   };
 
   const handleAuth = async (email: string, password: string) => {
-    try {
-      console.log("🚀 [HOME DEBUG] Starting quiz with:", { email, hasPassword: !!password });
-      
-      setAuthError(''); // Limpar erros anteriores
+    try {      
+      setAuthError('');
       
       const sessionToken = await startQuiz(email, password, 'javascript', 'easy');
       
       if (!sessionToken) {
         throw new Error("Sessão não foi criada corretamente");
       }
-
-      console.log("✅ [HOME DEBUG] Quiz started successfully, sessionToken:", sessionToken);
       
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Fechar modal
       setShowAuthModal(false);
-      
-      // 🎯 REDIRECIONAR PARA A PÁGINA DO QUIZ
-      console.log("🔀 [HOME DEBUG] Redirecting to quiz page...");
       setLocation('/quiz');
       
     } catch (error: any) {
-      console.error('❌ [HOME DEBUG] Error starting quiz:', error);
       setAuthError(error.message || 'Erro ao iniciar quiz');
-      // Não fechar o modal se houver erro
     }
-  };
-
-  const handleStatistics = () => {
-    // TODO: Implement statistics page
-    alert("Estatísticas será implementada na próxima versão.");
   };
 
   return (
@@ -71,8 +68,8 @@ export default function Header() {
                 <Code className="text-white text-lg" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Quiz de Programação</h1>
-                <p className="text-sm text-gray-500">JavaScript Fundamentals</p>
+                <h1 className="text-xl font-bold text-gray-900">Quizzes</h1>
+                <p className="text-sm text-gray-500">Tecnologia</p>
               </div>
             </div>
             
@@ -89,17 +86,6 @@ export default function Header() {
                 <Home className="mr-2 h-4 w-4" />
                 Início
               </Button>
-              
-              {isAuthenticated && (
-                <Button 
-                  onClick={handleStatistics}
-                  variant="ghost"
-                  className="text-gray-600 hover:text-primary transition-colors duration-200"
-                >
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Estatísticas
-                </Button>
-              )}
               
               {location !== "/quiz" && !location.includes("results") && (
                 <Button
@@ -159,7 +145,6 @@ export default function Header() {
             <AuthModal
               isOpen={showAuthModal}
               onClose={() => {
-                console.log("🔒 [HOME DEBUG] Closing auth modal");
                 setShowAuthModal(false);
                 setAuthError('');
               }}

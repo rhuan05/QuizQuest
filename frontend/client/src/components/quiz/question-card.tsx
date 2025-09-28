@@ -44,11 +44,11 @@ export default function QuestionCard({
               {question.difficulty.label}
             </Badge>
           </div>
-          
+
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            {question.title}
+            {question.question}
           </h3>
-          
+
           {/* Code Block */}
           {question.code && (
             <div className="code-block rounded-lg p-6 mb-6 bg-gradient-to-r from-slate-800 to-slate-700">
@@ -57,41 +57,34 @@ export default function QuestionCard({
               </pre>
             </div>
           )}
-
-          {/* Question Text */}
-          <div className="text-gray-700 mb-6">
-            {question.question}
-          </div>
         </div>
-        
+
         {/* Answer Options */}
         <div className="space-y-3 mb-8">
           {question.options.map((option, index) => {
             const label = optionLabels[index];
             const isSelected = selectedOption === option.id;
-            
+
             return (
-              <label 
-                key={option.id} 
-                className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                  isSelected 
-                    ? 'border-primary bg-primary/5' 
+              <label
+                key={option.id}
+                className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
+                    ? 'border-primary bg-primary/5'
                     : 'border-gray-200 hover:border-primary hover:bg-primary/5'
-                }`}
+                  }`}
               >
-                <input 
-                  type="radio" 
-                  name="answer" 
+                <input
+                  type="radio"
+                  name="answer"
                   value={option.id}
                   checked={isSelected}
                   onChange={() => onSelectOption(option.id)}
                   className="sr-only"
                 />
-                <div className={`w-6 h-6 border-2 rounded-full mr-4 flex items-center justify-center transition-colors ${
-                  isSelected 
-                    ? 'border-primary bg-primary' 
+                <div className={`w-6 h-6 border-2 rounded-full mr-4 flex items-center justify-center transition-colors ${isSelected
+                    ? 'border-primary bg-primary'
                     : 'border-gray-300'
-                }`}>
+                  }`}>
                   {isSelected && (
                     <div className="w-3 h-3 bg-white rounded-full"></div>
                   )}
@@ -105,7 +98,7 @@ export default function QuestionCard({
             );
           })}
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex flex-col gap-4 items-center sm:flex-row sm:justify-between mt-6">
           {/* Responder em cima no mobile */}
@@ -116,7 +109,7 @@ export default function QuestionCard({
           >
             {isSubmitting ? "Enviando..." : "Responder"}
           </Button>
-          
+
           {/* Pular e Dica juntos abaixo no mobile */}
           <div className="flex flex-col gap-3 w-full sm:flex-row sm:w-auto order-2 sm:order-none">
             <Button

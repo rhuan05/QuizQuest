@@ -513,7 +513,7 @@ async function seed() {
     const insertedDifficulties = await db.insert(difficulties).values(seedData.difficulties).returning();
     console.log(`✅ ${insertedDifficulties.length} dificuldades inseridas`);
 
-    // Create admin user
+    // Create admin usern
     console.log("👤 Criando usuário admin...");
     const adminUser = await db.insert(users).values({
       email: "admin@quizquest.com",

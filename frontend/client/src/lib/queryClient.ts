@@ -13,7 +13,6 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const token = localStorage.getItem('authToken');
-  console.log("[DEBUG] Token: ", token);
   const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
   
   if (token) {
@@ -26,8 +25,6 @@ export async function apiRequest(
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
-
-  console.log('API Request to ', url, ' returned status ', res.status);
 
   await throwIfResNotOk(res);
   return res;

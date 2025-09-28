@@ -75,7 +75,6 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
         }, 10);
       } catch (error: any) {
         setMessage(error.message || "Erro desconhecido.");
-        console.log(error);
 
         setIsSuccess(false);
       } finally {
@@ -106,7 +105,6 @@ export function AuthModal({ isOpen, onClose, onAuth, loading, error }: AuthModal
         }
       } catch (error: any) {
           setMessage(error.message || "Erro desconhecido.");
-          console.log(error);
           setIsSuccess(false);
       } finally {
           setIsLoading(false);

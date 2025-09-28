@@ -306,7 +306,6 @@ export class DatabaseStorage implements IStorage {
     return stats || undefined;
   }
 
-  // Admin Question Management
   async getAllQuestionsAdmin(): Promise<QuestionWithOptions[]> {
     return await db.query.questions.findMany({
       with: {
@@ -323,18 +322,16 @@ export class DatabaseStorage implements IStorage {
   async createQuestionWithOptions(questionData: any): Promise<Question> {
     const { categoryId, difficultyId, title, question, code, explanation, options: optionsData } = questionData;
     
-    // Criar a pergunta
     const [newQuestion] = await db.insert(questions).values({
       categoryId,
       difficultyId,
-      title: title || question.substring(0, 50),
+      title,
       question,
-      code: code || null,
-      explanation: explanation || "",
+      code,
+      explanation,
       isActive: true
     }).returning();
 
-    // Criar as opções
     for (const [index, optionData] of optionsData.entries()) {
       await db.insert(options).values({
         questionId: newQuestion.id,

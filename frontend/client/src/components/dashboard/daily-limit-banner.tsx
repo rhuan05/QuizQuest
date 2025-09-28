@@ -29,7 +29,6 @@ export function DailyLimitBanner({ onLimitReached }: DailyLimitBannerProps) {
 
   const fetchDailyLimit = async () => {
     try {
-      console.log(user);
       setIsLoading(true);
       const response = await fetch('/api/daily-limit', {
         headers: { Authorization: `Bearer ${token}` }

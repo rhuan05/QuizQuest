@@ -28,7 +28,7 @@ interface QuizState {
 
 type QuizAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'START_QUIZ'; payload: { sessionToken: string; questions: QuestionWithOptions[]; user: { id: string; email: string; name: string; } } }
+  | { type: 'START_QUIZ'; payload: { sessionToken: string; questions: QuestionWithOptions[]; user?: { id: string; email: string; name: string; } } }
   | { type: 'SUBMIT_ANSWER'; payload: { questionId: string; optionId: string; isCorrect: boolean; timeSpent: number; feedbackData: any } }
   | { type: 'NEXT_QUESTION' }
   | { type: 'SET_FEEDBACK'; payload: { show: boolean; data?: any } }
@@ -56,7 +56,7 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
         ...state,
         sessionToken: action.payload.sessionToken,
         questions: action.payload.questions,
-        user: action.payload.user,
+        user: action.payload.user || null,
         currentQuestionIndex: 0,
         answers: [],
         score: 0,

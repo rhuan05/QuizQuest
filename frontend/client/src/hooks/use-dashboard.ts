@@ -8,8 +8,16 @@ export function useDashboard() {
     const startDashboardMutation = useMutation({
         mutationFn: async () => {
             const questionsCompleted = await apiRequest("GET", "/api/quiz/dashboard");
+            
+            if (!questionsCompleted.ok) {
+                const errorData = await questionsCompleted.json().catch(() => ({ message: 'Erro desconhecido' }));
+                throw new Error(JSON.stringify({ 
+                    status: questionsCompleted.status, 
+                    message: errorData.message || 'Erro no servidor' 
+                }));
+            }
+            
             const questionsData = await questionsCompleted.json();
-
             return questionsData;
         },
         onSuccess: (data) => {
@@ -17,6 +25,26 @@ export function useDashboard() {
                 type: 'START_DASHBOARD',
                 payload: data
             });
+        },
+        onError: (error: Error) => {
+            try {
+                const errorInfo = JSON.parse(error.message);
+                dispatch({
+                    type: 'SET_ERROR',
+                    payload: {
+                        status: errorInfo.status,
+                        message: errorInfo.message
+                    }
+                });
+            } catch {
+                dispatch({
+                    type: 'SET_ERROR',
+                    payload: {
+                        status: 500,
+                        message: error.message || 'Erro desconhecido'
+                    }
+                });
+            }
         }
     });
 

@@ -81,7 +81,7 @@ export default function Home() {
 
     if (token) {
       setIsLoading(true);
-        await startQuiz();
+        await startQuiz("JavaScript"); // Categoria padrão
         setTimeout(() => {
           setLocation('/quiz');
         }, 10)
@@ -95,35 +95,22 @@ export default function Home() {
     try {
       setAuthError(''); // Limpar erros anteriores
       
-      const sessionToken = await startQuiz(email, password, 'javascript', 'easy');
+      const sessionToken = await startQuiz("JavaScript"); // Categoria padrão
       
       if (!sessionToken) {
         throw new Error("Sessão não foi criada corretamente");
       }
-
-      console.log("✅ [HOME DEBUG] Quiz started successfully, sessionToken:", sessionToken);
       
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Fechar modal
       setShowAuthModal(false);
       
-      // 🎯 REDIRECIONAR PARA A PÁGINA DO QUIZ
-      console.log("🔀 [HOME DEBUG] Redirecting to quiz page...");
       setLocation('/quiz');
       
     } catch (error: any) {
-      console.error('❌ [HOME DEBUG] Error starting quiz:', error);
       setAuthError(error.message || 'Erro ao iniciar quiz');
-      // Não fechar o modal se houver erro
     }
-  };
-
-  const handleCategoryQuiz = (categoryId: string) => {
-    // Start quiz with specific category
-    setAuthError('');
-    setShowAuthModal(true);
-    // We'll pass the category later when implementing category selection
   };
 
   return (
@@ -293,7 +280,6 @@ export default function Home() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => {
-          console.log("🔒 [HOME DEBUG] Closing auth modal");
           setShowAuthModal(false);
           setAuthError('');
         }}

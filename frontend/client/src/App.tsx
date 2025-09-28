@@ -13,6 +13,7 @@ import Quiz from "./pages/quiz";
 import Results from "./pages/results";
 import Header from "./components/layout/header";
 import Dashboard from "./components/dashboard/dashboard";
+import AdminPage from "./pages/admin";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/quiz" component={Quiz} />
       <Route path="/results/:sessionToken" component={Results} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );

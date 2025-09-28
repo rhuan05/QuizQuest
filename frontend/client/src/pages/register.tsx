@@ -32,13 +32,12 @@ export default function RegisterContent() {
             } else {
                 setMessage(result.message);
                 setIsSuccess(true);
-                // Redirect to login after 2 seconds
                 setTimeout(() => {
                     setLocation('/login');
                 }, 2000);
             }
-        } catch (err) {
-            setMessage("Erro de rede. Tente novamente mais tarde.");
+        } catch (err: any) {
+            setMessage(err.message);
             setIsSuccess(false);
         } finally {
             setIsLoading(false);

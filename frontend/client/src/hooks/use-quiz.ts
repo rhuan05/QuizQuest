@@ -6,16 +6,17 @@ export function useQuiz() {
   const { state, dispatch } = useQuizContext();
 
   const startQuizMutation = useMutation({
-    mutationFn: async () => {
-      // Start session
-      const sessionResponse = await apiRequest("POST", "/api/quiz/start");
+    mutationFn: async (category?: string) => {
+      // Start session with category
+      const sessionResponse = await apiRequest("POST", "/api/quiz/start", {
+        category: category || 'JavaScript'
+      });
       const sessionData = await sessionResponse.json();
       
-      // Get questions
-      const questionsResponse = await apiRequest("GET", "/api/questions?count=10");
-      const questions = await questionsResponse.json();
-      
-      return { sessionToken: sessionData.sessionToken, questions };
+      return { 
+        sessionToken: sessionData.sessionToken, 
+        questions: sessionData.questions 
+      };
     },
     onSuccess: (data) => {
       dispatch({ 
@@ -66,9 +67,9 @@ export function useQuiz() {
     },
   });
 
-  const startQuiz = async () => {
+  const startQuiz = async (category?: string) => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    const result = await startQuizMutation.mutateAsync();
+    const result = await startQuizMutation.mutateAsync(category);
     return result.sessionToken;
   };
 
